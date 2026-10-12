@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.4-debug.apk`](dist/showfilix-tv-1.0.4-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.5-debug.apk`](dist/showfilix-tv-1.0.5-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.4-debug.apk
+adb install -r showfilix-tv-1.0.5-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -38,7 +38,8 @@ The app appears under Android TV apps as **شوفیلیکس**.
   (1080p/720p/480p …) reported by the API, then plays the chosen stream.
 - **Playback** — ExoPlayer through the site's `/api/media/stream` proxy. Streams are
   progressive MKV/MP4 and are read from `downloadGroups` / `seriesDownloadGroups`
-  (the `playLinks` array is usually empty).
+  (the `playLinks` array is usually empty). The title/quality overlay fades out a few
+  seconds after playback starts and comes back when paused.
 - **Login** — e-mail + password (`POST /api/auth/login`), matching the website's own
   form. On-screen keyboard with Shift / caps-lock, and clipboard **paste** / **copy**
   for both the e-mail and password fields.
