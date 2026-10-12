@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.1-debug.apk`](dist/showfilix-tv-1.0.1-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.2-debug.apk`](dist/showfilix-tv-1.0.2-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.1-debug.apk
+adb install -r showfilix-tv-1.0.2-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -35,7 +35,8 @@ The app appears under Android TV apps as **شوفیلیکس**.
 - **Details** — full metadata, cast, and "similar titles".
 - **Playback** — ExoPlayer (HLS) through the site's `/api/media/stream` proxy.
 - **Login** — e-mail + password (`POST /api/auth/login`), matching the website's own
-  form, with an on-screen keyboard, token storage and refresh.
+  form. On-screen keyboard with Shift / caps-lock, and clipboard **paste** / **copy**
+  for both the e-mail and password fields.
 - **TV-first UI** — leanback launcher entry, D-pad navigation, focus rings.
 
 ## Screens & flow
