@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.0-debug.apk`](dist/showfilix-tv-1.0.0-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.1-debug.apk`](dist/showfilix-tv-1.0.1-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.0-debug.apk
+adb install -r showfilix-tv-1.0.1-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -34,7 +34,8 @@ The app appears under Android TV apps as **شوفیلیکس**.
 - **Search** — on-screen keyboard with live results.
 - **Details** — full metadata, cast, and "similar titles".
 - **Playback** — ExoPlayer (HLS) through the site's `/api/media/stream` proxy.
-- **Login** — phone SMS OTP flow (`/api/auth/otp/*`) with token storage and refresh.
+- **Login** — e-mail + password (`POST /api/auth/login`), matching the website's own
+  form, with an on-screen keyboard, token storage and refresh.
 - **TV-first UI** — leanback launcher entry, D-pad navigation, focus rings.
 
 ## Screens & flow
@@ -43,7 +44,7 @@ The app appears under Android TV apps as **شوفیلیکس**.
 Home ──▶ Details ──▶ Player
  │  └──▶ Browse (movies / series) ──▶ Details
  └──▶ Search ──▶ Details
-Login (phone OTP) is reachable from Home and Details.
+Login (e-mail + password) is reachable from Home and Details.
 ```
 
 ## Reverse-engineered API
@@ -61,7 +62,8 @@ front-end's client bundles. The full map is in
 | `GET /api/media/{type}/{id}/similar` | no | Related titles |
 | `GET /api/media/{type}/{id}/links` | **yes** | Playback links |
 | `GET /api/media/stream?url=` | — | Stream proxy |
-| `POST /api/auth/otp/send`, `/otp/login`, `GET /me`, `POST /refresh`, `/logout` | — | Auth |
+| `POST /api/auth/login` | — | E-mail + password sign-in (`{email,password,deviceId}` → `{accessToken,refreshToken,expiresIn}`) |
+| `GET /api/auth/me`, `POST /api/auth/refresh`, `/logout` | — | Session |
 
 ## Build from source
 
@@ -100,10 +102,14 @@ captured from the live API** (saved under `app/src/test/resources/`) with the ap
 
 ## Known limitations
 
-- Only the phone-OTP login is implemented (no Google OAuth on TV).
-- The success envelope of `/auth/otp/login` is undocumented, so the session is
-  extracted by searching the response for token keys; this path is not verified
-  live, as no subscription account was available during development.
+- **Sign-in is e-mail + password only** (matching the website). Google OAuth is not
+  implemented, and the phone-OTP endpoints the backend also exposes are not surfaced.
+- Account **registration** is not implemented in-app; create the account on the website.
+- A successful sign-in has **not been exercised against a real account** (none was
+  available), so the session round-trip is verified only up to the API contract:
+  the request body/fields and the `{accessToken,refreshToken,expiresIn}` envelope are
+  confirmed from the live API and the site's client bundle, and the failure path
+  (`ACCOUNT_NOT_FOUND`) was reproduced live.
 - Playback requires an active subscription; without one, the app shows a
   "subscription required" notice.
 - Season/episode browsing, watchlist and continue-watching are not implemented yet.

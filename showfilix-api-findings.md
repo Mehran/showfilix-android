@@ -57,18 +57,43 @@ Stream proxy used by the web player: `GET /api/media/stream?url=<https url>`
 
 ## Auth (`/api/auth/*`, NestJS)
 
+The website's login form (`/auth/login`) authenticates with **e-mail + password** —
+its own copy reads: "با ایمیل و رمز عبور وارد شوید" (sign in with e-mail and password).
+Phone-OTP endpoints also exist on the backend but are not the login form.
+
 | Method | Path | Body |
 |---|---|---|
-| POST | `/api/auth/otp/send` | `{ phone }` (sms OTP) |
-| POST | `/api/auth/otp/login` | `{ phone, code, deviceId }` → session |
-| POST | `/api/auth/login` | `{ email/phone, password, deviceId }` |
-| POST | `/api/auth/register` | `{..., deviceId}` |
+| POST | `/api/auth/login` | `{ email, password, deviceId }` → session |
+| POST | `/api/auth/register` | `{ email, phone, password, displayName?, deviceId }` |
 | GET | `/api/auth/me` | Bearer access token |
 | POST | `/api/auth/refresh` | `{ refreshToken, deviceId }` |
 | POST | `/api/auth/logout` | `{ refreshToken }` |
+| POST | `/api/auth/otp/send` | `{ phone }` (SMS OTP — not the login form) |
+| POST | `/api/auth/otp/login` | `{ phone, code, deviceId }` |
 | POST | `/api/auth/forgot-password` `/reset-password` `/otp/reset-password` `/otp/verify-reset` | password reset |
 
-Session = `{ accessToken, refreshToken }`; client stores both and refreshes on 401.
+**Session envelope** (verified against the client bundle's `applyAuthSession`, which
+reads `e.accessToken`, `e.refreshToken`, `e.expiresIn`):
+
+```json
+{ "accessToken": "…", "refreshToken": "…", "expiresIn": "1h" }
+```
+
+**Verified live** (2026-10-12):
+
+```
+POST /api/auth/login {"email":"nobody@example.com","password":"WrongPass123!","deviceId":"…"}
+ → 404 {"statusCode":404,"code":"ACCOUNT_NOT_FOUND","message":"حسابی با این ایمیل یافت نشد."}
+
+POST /api/auth/login {"identifier":"…","password":"x"}
+ → 400 {"message":["property identifier should not exist",
+                   "password must be longer than or equal to 8 characters"]}
+```
+
+So the field is `email` (not `identifier`), passwords must be ≥ 8 characters, and
+errors carry a `code` plus a Persian `message` (validation errors return an array).
+Token storage client-side uses `showfilix_access_token`, `showfilix_refresh_token` and
+`showfilix_access_expires_at`.
 
 ## Panel (auth)
 

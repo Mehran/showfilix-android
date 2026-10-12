@@ -1,6 +1,7 @@
 package com.showfilix.tv.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.showfilix.tv.auth.AuthRepository
@@ -35,54 +37,55 @@ import com.showfilix.tv.ui.theme.Text1
 import com.showfilix.tv.ui.theme.Text2
 import kotlinx.coroutines.launch
 
-private enum class Step { PHONE, CODE }
+private enum class Field { EMAIL, PASSWORD }
+
+private val KEY_ROWS = listOf(
+    "qwertyuiop".toList(),
+    "asdfghjkl@".toList(),
+    "zxcvbnm.-_".toList(),
+    "1234567890".toList()
+)
 
 @Composable
 fun LoginScreen(
     auth: AuthRepository,
     onLoggedIn: () -> Unit
 ) {
-    var step by remember { mutableStateOf(Step.PHONE) }
-    var phone by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var active by remember { mutableStateOf(Field.EMAIL) }
     var status by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val current = if (step == Step.PHONE) phone else code
+    fun type(ch: String) {
+        if (active == Field.EMAIL) email += ch else password += ch
+    }
 
-    fun onDigit(d: String) {
-        if (step == Step.PHONE) {
-            if (phone.length < 11) phone += d
-        } else {
-            if (code.length < 6) code += d
-        }
+    fun backspace() {
+        if (active == Field.EMAIL) email = email.dropLast(1) else password = password.dropLast(1)
     }
 
     fun submit() {
         if (loading) return
+        if (!email.contains("@")) {
+            status = "ایمیل معتبر وارد کنید"
+            active = Field.EMAIL
+            return
+        }
+        if (password.length < 8) {
+            status = "رمز عبور باید حداقل ۸ کاراکتر باشد"
+            active = Field.PASSWORD
+            return
+        }
         scope.launch {
             loading = true
             status = null
             try {
-                if (step == Step.PHONE) {
-                    if (phone.length < 10) {
-                        status = "شماره نامعتبر است"
-                    } else {
-                        auth.sendOtp(phone)
-                        step = Step.CODE
-                        status = "کد پیامک شد."
-                    }
-                } else {
-                    if (code.length < 4) {
-                        status = "کد نامعتبر است"
-                    } else {
-                        auth.loginWithOtp(phone, code)
-                        onLoggedIn()
-                    }
-                }
+                auth.login(email, password)
+                onLoggedIn()
             } catch (e: Exception) {
-                status = e.message ?: "خطا"
+                status = e.message ?: "ورود ناموفق بود"
             } finally {
                 loading = false
             }
@@ -93,48 +96,51 @@ fun LoginScreen(
         Modifier.fillMaxSize().background(Bg0).padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(Modifier.height(8.dp))
+        Text("شوفیلیکس", color = Brand, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(6.dp))
+        Text("با ایمیل و رمز عبور وارد شوید", color = Text2, fontSize = 17.sp)
         Spacer(Modifier.height(20.dp))
-        Text("شوفیلیکس", color = Brand, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = if (step == Step.PHONE) "شماره موبایل خود را وارد کنید" else "کد پیامک‌شده را وارد کنید",
-            color = Text1, fontSize = 24.sp, fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(18.dp))
 
-        Box(
-            Modifier
-                .background(Color(0xFF161922), RoundedCornerShape(10.dp))
-                .padding(horizontal = 24.dp, vertical = 14.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (current.isEmpty()) "—" else current,
-                color = Text1, fontSize = 30.sp, letterSpacing = 6.sp
-            )
-        }
+        FieldRow(
+            label = "ایمیل",
+            value = email,
+            placeholder = "you@example.com",
+            isActive = active == Field.EMAIL,
+            mask = false,
+            onFocus = { active = Field.EMAIL }
+        )
+        Spacer(Modifier.height(12.dp))
+        FieldRow(
+            label = "رمز عبور",
+            value = password,
+            placeholder = "••••••••",
+            isActive = active == Field.PASSWORD,
+            mask = true,
+            onFocus = { active = Field.PASSWORD }
+        )
 
         status?.let {
             Spacer(Modifier.height(12.dp))
-            Text(it, color = if (it.contains("شد")) Text2 else Color(0xFFFFB4AB), fontSize = 16.sp)
+            Text(it, color = Color(0xFFFFB4AB), fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
 
         Spacer(Modifier.height(20.dp))
-        val digitRows = listOf("123", "456", "789")
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            digitRows.forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { ch -> PadKey(ch.toString()) { onDigit(ch.toString()) } }
+            KEY_ROWS.forEach { rowKeys ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowKeys.forEach { ch -> KeyButton(ch.toString()) { type(ch.toString()) } }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                PadKey("⌫") {
-                    if (step == Step.PHONE) phone = phone.dropLast(1) else code = code.dropLast(1)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                KeyButton("فاصله", wide = true) { type(" ") }
+                KeyButton("⌫", wide = true) { backspace() }
+                KeyButton("پاک کردن", wide = true) {
+                    if (active == Field.EMAIL) email = "" else password = ""
                 }
-                PadKey("0") { onDigit("0") }
                 FocusButton(
-                    text = if (step == Step.PHONE) "ارسال کد" else "ورود",
+                    text = if (loading) "در حال ورود…" else "ورود",
                     primary = true,
                     onClick = { submit() }
                 )
@@ -142,30 +148,73 @@ fun LoginScreen(
         }
 
         Spacer(Modifier.height(14.dp))
-        if (loading) Text("در حال پردازش…", color = Text2, fontSize = 15.sp)
-        if (step == Step.CODE) {
-            Spacer(Modifier.height(12.dp))
-            FocusButton("ویرایش شماره", onClick = { step = Step.PHONE; code = ""; status = null })
-        }
+        Text(
+            "با جابه‌جایی بین دو کادر، مقصد تایپ را انتخاب کنید.",
+            color = Text2, fontSize = 13.sp
+        )
     }
 }
 
 @Composable
-private fun PadKey(label: String, onKey: () -> Unit) {
+private fun FieldRow(
+    label: String,
+    value: String,
+    placeholder: String,
+    isActive: Boolean,
+    mask: Boolean,
+    onFocus: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shown = if (mask) "•".repeat(value.length) else value
+    Row(
+        modifier = Modifier
+            .width(760.dp)
+            .onFocusChanged {
+                focused = it.isFocused
+                if (it.isFocused) onFocus()
+            }
+            .clickable { onFocus() }
+            .background(Surface2, RoundedCornerShape(10.dp))
+            .border(
+                2.dp,
+                when {
+                    focused -> Color.White
+                    isActive -> Brand
+                    else -> Color.Transparent
+                },
+                RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Text2, fontSize = 16.sp, modifier = Modifier.width(120.dp))
+        Text(
+            text = shown.ifEmpty { placeholder },
+            color = if (shown.isEmpty()) Text2 else Text1,
+            fontSize = 20.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun KeyButton(label: String, wide: Boolean = false, onKey: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .size(width = 84.dp, height = 64.dp)
+            .width(if (wide) 118.dp else 60.dp)
+            .height(50.dp)
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onKey)
-            .background(if (focused) Color.White else Surface2, RoundedCornerShape(10.dp)),
+            .background(if (focused) Color.White else Surface2, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
             color = if (focused) Color(0xFF0B0C10) else Text1,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.SemiBold
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }

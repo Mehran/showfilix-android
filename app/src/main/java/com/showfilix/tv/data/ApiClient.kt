@@ -96,10 +96,14 @@ class ApiClient(private val session: SessionStore) {
     }
 
     private fun extractMessage(body: String, code: Int): String = try {
-        val el = json.parseToJsonElement(body)
-        (el as? kotlinx.serialization.json.JsonObject)
-            ?.get("message")?.toString()?.trim('"')
-            ?: "HTTP $code"
+        val obj = json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject
+        when (val msg = obj?.get("message")) {
+            null -> "HTTP $code"
+            // validation errors arrive as an array of strings
+            is kotlinx.serialization.json.JsonArray ->
+                msg.joinToString("، ") { it.toString().trim('"') }
+            else -> msg.toString().trim('"')
+        }
     } catch (_: Exception) {
         if (body.isBlank()) "HTTP $code" else body.take(200)
     }

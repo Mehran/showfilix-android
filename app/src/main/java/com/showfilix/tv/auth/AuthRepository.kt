@@ -1,8 +1,10 @@
 package com.showfilix.tv.auth
 
 import com.showfilix.tv.data.ApiClient
+import com.showfilix.tv.data.ApiException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -12,41 +14,40 @@ import kotlinx.serialization.json.put
 /**
  * Authentication via the site's auth endpoints.
  *
- * Only the phone-OTP flow is implemented (no Google OAuth on a TV). The exact
- * JSON envelope of a successful login is not documented, so the session is
- * extracted by recursively searching the response for the token keys.
+ * Sign-in is e-mail + password (`POST /api/auth/login`), matching the website's
+ * own login form. A successful response carries
+ * `{ accessToken, refreshToken, expiresIn }`; those are stored for later API
+ * calls and refreshed via `POST /api/auth/refresh`.
  */
 class AuthRepository(
     private val api: ApiClient,
     private val session: SessionStore
 ) {
 
-    suspend fun sendOtp(phone: String) {
-        val body = buildJsonObject { put("phone", phone) }.toString()
-        api.postRaw("/auth/otp/send", body)
-    }
-
-    /** Exchange the SMS code for a session. Returns the display name if present. */
-    suspend fun loginWithOtp(phone: String, code: String): String? {
+    /** Signs in and stores the session. Throws [ApiException] with the server message. */
+    suspend fun login(email: String, password: String) {
         val body = buildJsonObject {
-            put("phone", phone)
-            put("code", code)
+            put("email", email.trim())
+            put("password", password)
             put("deviceId", session.deviceId())
         }.toString()
-        val raw = api.postRaw("/auth/otp/login", body)
-        val root = api.json.parseToJsonElement(raw)
-        val access = findString(root, "accessToken") ?: findString(root, "access_token")
-        val refresh = findString(root, "refreshToken") ?: findString(root, "refresh_token")
-        val name = findString(root, "name") ?: findString(root, "phone")
+
+        val root = api.json.parseToJsonElement(api.postRaw("/auth/login", body))
+        val access = findString(root, "accessToken")
+            ?: throw ApiException(0, "پاسخ سرور نامعتبر بود")
+        val refresh = findString(root, "refreshToken")
+        val name = findString(root, "displayName")
+            ?: findString(root, "name")
             ?: findString(root, "email")
-        session.saveSession(access ?: findString(root, "token"), refresh, name)
-        return name
+            ?: email.trim()
+        session.saveSession(access, refresh, name)
     }
 
     suspend fun me(): JsonElement = withContext(Dispatchers.IO) {
         api.json.parseToJsonElement(api.getRaw("/auth/me"))
     }
 
+    /** Refreshes the access token if the stored refresh token is still valid. */
     suspend fun refreshIfPossible(): Boolean {
         val rt = session.refreshToken ?: return false
         return try {
@@ -54,12 +55,10 @@ class AuthRepository(
                 put("refreshToken", rt)
                 put("deviceId", session.deviceId())
             }.toString()
-            val raw = api.postRaw("/auth/refresh", body)
-            val root = api.json.parseToJsonElement(raw)
-            val access = findString(root, "accessToken") ?: findString(root, "access_token")
-            val refresh = findString(root, "refreshToken") ?: rt
+            val root = api.json.parseToJsonElement(api.postRaw("/auth/refresh", body))
+            val access = findString(root, "accessToken")
             if (access != null) {
-                session.saveSession(access, refresh, session.userName)
+                session.saveSession(access, findString(root, "refreshToken") ?: rt, session.userName)
                 true
             } else false
         } catch (_: Exception) {
@@ -85,8 +84,7 @@ class AuthRepository(
                 (el[key] as? JsonPrimitive)?.takeIf { it.isString }?.let { return it.content }
                 el.values.forEach { v -> findString(v, key)?.let { return it } }
             }
-            is kotlinx.serialization.json.JsonArray ->
-                el.forEach { v -> findString(v, key)?.let { return it } }
+            is JsonArray -> el.forEach { v -> findString(v, key)?.let { return it } }
             else -> {}
         }
         return null
