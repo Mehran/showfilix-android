@@ -46,7 +46,7 @@ fun DetailsScreen(
     type: String,
     externalId: String,
     isLoggedIn: Boolean,
-    onPickPlayback: (siteKey: String?) -> Unit,
+    onPickPlayback: (MediaItem) -> Unit,
     onOpenDetails: (MediaItem) -> Unit,
     onLogin: () -> Unit
 ) {
@@ -127,7 +127,7 @@ fun DetailsScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 // Opens the season/episode/quality picker; it resolves
                                 // the stream and reports access problems itself.
-                                FocusButton("پخش", primary = true, onClick = { onPickPlayback(m.siteKey) })
+                                FocusButton("پخش", primary = true, onClick = { onPickPlayback(m) })
                                 if (!isLoggedIn) {
                                     FocusButton("ورود", onClick = onLogin)
                                 }

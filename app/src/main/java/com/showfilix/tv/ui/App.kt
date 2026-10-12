@@ -63,19 +63,14 @@ fun ShowfilixRoot(container: AppContainer) {
                 type = screen.type,
                 externalId = screen.externalId,
                 isLoggedIn = isLoggedIn,
-                onPickPlayback = { siteKey ->
-                    nav.push(Screen.Picker(screen.type, screen.externalId, siteKey, screen.title))
-                },
+                onPickPlayback = { media -> nav.push(Screen.Picker(media)) },
                 onOpenDetails = openDetails,
                 onLogin = { nav.push(Screen.Login) }
             )
 
             is Screen.Picker -> PlaybackPickerScreen(
                 catalog = container.catalog,
-                type = screen.type,
-                externalId = screen.externalId,
-                siteKey = screen.siteKey,
-                title = screen.title,
+                media = screen.media,
                 isLoggedIn = isLoggedIn,
                 onPlay = { url, title, subtitle -> nav.push(Screen.Player(url, title, subtitle)) },
                 onLogin = { nav.push(Screen.Login) }

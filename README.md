@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.5-debug.apk`](dist/showfilix-tv-1.0.5-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.6-debug.apk`](dist/showfilix-tv-1.0.6-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.5-debug.apk
+adb install -r showfilix-tv-1.0.6-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -35,7 +35,9 @@ The app appears under Android TV apps as **شوفیلیکس**.
 - **Details** — full metadata, cast, and "similar titles".
 - **Playback picker** — pressing Play opens a picker with every available
   **version** (دوبله فارسی / نسخه اصلی), **season**, **episode** and **quality**
-  (1080p/720p/480p …) reported by the API, then plays the chosen stream.
+  (1080p/720p/480p …) reported by the API, then plays the chosen stream. The screen
+  is built around the title's own artwork: a dimmed backdrop, the poster, the year /
+  rating / runtime line, the top cast with avatars, and the plot — so it is never blank.
 - **Playback** — ExoPlayer through the site's `/api/media/stream` proxy. Streams are
   progressive MKV/MP4 and are read from `downloadGroups` / `seriesDownloadGroups`
   (the `playLinks` array is usually empty). The title/quality overlay fades out a few
