@@ -16,6 +16,7 @@ import com.showfilix.tv.ui.screens.BrowseScreen
 import com.showfilix.tv.ui.screens.DetailsScreen
 import com.showfilix.tv.ui.screens.HomeScreen
 import com.showfilix.tv.ui.screens.LoginScreen
+import com.showfilix.tv.ui.screens.PlaybackPickerScreen
 import com.showfilix.tv.ui.screens.PlayerScreen
 import com.showfilix.tv.ui.screens.SearchScreen
 import com.showfilix.tv.ui.theme.Bg0
@@ -62,10 +63,21 @@ fun ShowfilixRoot(container: AppContainer) {
                 type = screen.type,
                 externalId = screen.externalId,
                 isLoggedIn = isLoggedIn,
-                onPlay = { url, title, subtitle ->
-                    nav.push(Screen.Player(url, title, subtitle))
+                onPickPlayback = { siteKey ->
+                    nav.push(Screen.Picker(screen.type, screen.externalId, siteKey, screen.title))
                 },
                 onOpenDetails = openDetails,
+                onLogin = { nav.push(Screen.Login) }
+            )
+
+            is Screen.Picker -> PlaybackPickerScreen(
+                catalog = container.catalog,
+                type = screen.type,
+                externalId = screen.externalId,
+                siteKey = screen.siteKey,
+                title = screen.title,
+                isLoggedIn = isLoggedIn,
+                onPlay = { url, title, subtitle -> nav.push(Screen.Player(url, title, subtitle)) },
                 onLogin = { nav.push(Screen.Login) }
             )
 

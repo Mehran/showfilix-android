@@ -18,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +39,6 @@ import com.showfilix.tv.ui.components.metaLine
 import com.showfilix.tv.ui.theme.Bg0
 import com.showfilix.tv.ui.theme.Text1
 import com.showfilix.tv.ui.theme.Text2
-import kotlinx.coroutines.launch
 
 @Composable
 fun DetailsScreen(
@@ -48,15 +46,13 @@ fun DetailsScreen(
     type: String,
     externalId: String,
     isLoggedIn: Boolean,
-    onPlay: (url: String, title: String, subtitle: String?) -> Unit,
+    onPickPlayback: (siteKey: String?) -> Unit,
     onOpenDetails: (MediaItem) -> Unit,
     onLogin: () -> Unit
 ) {
     var state by remember { mutableStateOf<UiState<MediaItem>>(UiState.Loading) }
     var similar by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
-    var notice by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableStateOf(0) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(externalId, reloadKey) {
         state = UiState.Loading
@@ -129,46 +125,12 @@ fun DetailsScreen(
                             }
                             Spacer(Modifier.height(20.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                FocusButton("پخش", primary = true, onClick = {
-                                    scope.launch {
-                                        notice = null
-                                        val result = runCatching { catalog.links(type, externalId, m.siteKey) }
-                                        val res = result.getOrNull()
-                                        if (res == null) {
-                                            notice = result.exceptionOrNull()?.message
-                                                ?: "خطا در دریافت لینک پخش"
-                                            return@launch
-                                        }
-                                        // Streams live in downloadGroups / seriesDownloadGroups,
-                                        // not in playLinks (which is usually empty).
-                                        val url = res.bestStreamUrl()
-                                        if (url != null) {
-                                            val subtitle = if (m.isSeries) {
-                                                val ep = res.allEpisodes.firstOrNull()
-                                                if (ep != null) {
-                                                    "فصل ${ep.season ?: 1} · قسمت ${ep.episode ?: 1}"
-                                                } else m.titleEn
-                                            } else m.titleEn
-                                            onPlay(catalog.streamProxy(url), m.displayTitle, subtitle)
-                                        } else {
-                                            notice = when {
-                                                res.access?.hasAccess == false && !isLoggedIn ->
-                                                    "برای پخش باید وارد حساب کاربری شوید."
-                                                res.access?.hasAccess == false ->
-                                                    "برای پخش این عنوان به اشتراک فعال نیاز دارید."
-                                                else ->
-                                                    "لینک پخشی برای این عنوان در دسترس نیست."
-                                            }
-                                        }
-                                    }
-                                })
+                                // Opens the season/episode/quality picker; it resolves
+                                // the stream and reports access problems itself.
+                                FocusButton("پخش", primary = true, onClick = { onPickPlayback(m.siteKey) })
                                 if (!isLoggedIn) {
                                     FocusButton("ورود", onClick = onLogin)
                                 }
-                            }
-                            notice?.let {
-                                Spacer(Modifier.height(12.dp))
-                                Text(it, color = Color(0xFFFFB4AB), fontSize = 15.sp)
                             }
                         }
                     }

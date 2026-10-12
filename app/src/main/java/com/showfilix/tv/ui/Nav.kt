@@ -7,6 +7,13 @@ sealed interface Screen {
     data class Browse(val type: String, val title: String) : Screen
     data object Search : Screen
     data class Details(val type: String, val externalId: String, val title: String) : Screen
+    /** Season / episode / quality picker shown before playback. */
+    data class Picker(
+        val type: String,
+        val externalId: String,
+        val siteKey: String?,
+        val title: String
+    ) : Screen
     data class Player(val url: String, val title: String, val subtitle: String? = null) : Screen
     data object Login : Screen
 }

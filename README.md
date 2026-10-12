@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.3-debug.apk`](dist/showfilix-tv-1.0.3-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.4-debug.apk`](dist/showfilix-tv-1.0.4-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.3-debug.apk
+adb install -r showfilix-tv-1.0.4-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -33,6 +33,9 @@ The app appears under Android TV apps as **شوفیلیکس**.
 - **Browse** — paginated poster grid for movies and series with sort filters.
 - **Search** — on-screen keyboard with live results.
 - **Details** — full metadata, cast, and "similar titles".
+- **Playback picker** — pressing Play opens a picker with every available
+  **version** (دوبله فارسی / نسخه اصلی), **season**, **episode** and **quality**
+  (1080p/720p/480p …) reported by the API, then plays the chosen stream.
 - **Playback** — ExoPlayer through the site's `/api/media/stream` proxy. Streams are
   progressive MKV/MP4 and are read from `downloadGroups` / `seriesDownloadGroups`
   (the `playLinks` array is usually empty).
@@ -44,7 +47,8 @@ The app appears under Android TV apps as **شوفیلیکس**.
 ## Screens & flow
 
 ```
-Home ──▶ Details ──▶ Player
+Home ──▶ Details ──▶ Playback picker ──▶ Player
+ │        └── version ▸ season ▸ episode ▸ quality
  │  └──▶ Browse (movies / series) ──▶ Details
  └──▶ Search ──▶ Details
 Login (e-mail + password) is reachable from Home and Details.
@@ -109,12 +113,16 @@ captured from the live API** (saved under `app/src/test/resources/`) with the ap
   implemented, and the phone-OTP endpoints the backend also exposes are not surfaced.
 - Account **registration** is not implemented in-app; create the account on the website.
 - Sign-in and the full playback-link chain have been exercised against a real
-  account over the API: login → `links` (`hasAccess: true`) → signed stream URL →
-  `206` byte range with real MKV data through the proxy. What has **not** been run is
+  account over the API: login → `links` (`hasAccess: true`) → version/season/episode/
+  quality selection → signed stream URL → `206` byte range with real video data
+  (movies are MKV, episodes are MP4) through the proxy. What has **not** been run is
   the in-app ExoPlayer decode, because no Android TV device/emulator was available.
 - Playback requires an account with access; otherwise the app shows a
   "subscription required" notice.
 - Access tokens last ~5 minutes; the client refreshes them automatically on a 401.
-- Season/episode browsing, watchlist and continue-watching are not implemented yet.
+- Season/episode/quality selection is implemented, but the last choice is not
+  remembered between sessions. Watchlist and continue-watching are not implemented.
+- The player's on-screen controls are the stock ExoPlayer controller; a purpose-built
+  TV overlay (seek bar, subtitle/audio menus) is not built yet.
 - The shipped APK is a **debug** build (signed with the Android debug key). Build a
   release variant with your own keystore for distribution.

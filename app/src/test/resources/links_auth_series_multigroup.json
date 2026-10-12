@@ -1,0 +1,128 @@
+{
+  "type": "series",
+  "externalId": "tt11712058",
+  "siteKey": "mymoviz",
+  "playLinks": [],
+  "downloadGroups": [],
+  "seasons": [],
+  "seriesDownloadGroups": [
+    {
+      "title": "دانلود دوبله فارسی",
+      "seasons": [
+        {
+          "season": 1,
+          "title": "فصل 1",
+          "episodes": [
+            {
+              "season": 1,
+              "episode": 1,
+              "title": "قسمت 1",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "1.0 GB",
+                  "links": [
+                    {
+                      "label": "دانلود",
+                      "url": "https://cdn.example.test/dub-s1e1-1080.mkv",
+                      "kind": "download",
+                      "mirror": 1,
+                      "streamUrl": "https://cdn.example.test/dub-s1e1-1080.mkv"
+                    }
+                  ]
+                },
+                {
+                  "quality": "WEB-DL 720p",
+                  "size": "592 MB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/dub-s1e1-720.mkv"
+                }
+              ]
+            },
+            {
+              "season": 1,
+              "episode": 2,
+              "title": "قسمت 2",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "1.1 GB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/dub-s1e2-1080.mkv"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "دانلود نسخه اصلی",
+      "seasons": [
+        {
+          "season": 1,
+          "title": "فصل 1",
+          "episodes": [
+            {
+              "season": 1,
+              "episode": 1,
+              "title": "قسمت 1",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "1.0 GB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/orig-s1e1-1080.mkv"
+                },
+                {
+                  "quality": "WEB-DL 720p",
+                  "size": "593 MB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/orig-s1e1-720.mkv"
+                }
+              ]
+            },
+            {
+              "season": 1,
+              "episode": 2,
+              "title": "قسمت 2",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "1.1 GB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/orig-s1e2-1080.mkv"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "season": 2,
+          "title": "فصل 2",
+          "episodes": [
+            {
+              "season": 2,
+              "episode": 1,
+              "title": "قسمت 1",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "1.2 GB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/orig-s2e1-1080.mkv"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "access": {
+    "hasAccess": true,
+    "isExempt": true,
+    "subscription": null,
+    "subscriptionsRequired": false
+  }
+}
