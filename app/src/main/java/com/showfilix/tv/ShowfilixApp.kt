@@ -12,6 +12,11 @@ class AppContainer(app: Application) {
     val api = ApiClient(session)
     val catalog = CatalogRepository(api)
     val auth = AuthRepository(api, session)
+
+    init {
+        // Access tokens expire after ~5 minutes; refresh once on a 401.
+        api.onUnauthorized = { auth.refreshIfPossible() }
+    }
 }
 
 class ShowfilixApp : Application() {

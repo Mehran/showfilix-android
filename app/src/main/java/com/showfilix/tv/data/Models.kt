@@ -1,7 +1,7 @@
 package com.showfilix.tv.data
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * A catalog entry (movie or series). The list endpoints return a subset of these
@@ -118,65 +118,99 @@ data class SimilarResponse(
     val items: List<MediaItem> = emptyList()
 )
 
-/* ------------------------------- links --------------------------------- */
+/* ------------------------------- links ---------------------------------
+
+   Playback links live in `downloadGroups` (movies) and `seriesDownloadGroups`
+   (series) — `playLinks` is usually empty. Each quality entry carries a
+   `streamUrl`; the nested `links` array holds mirrors of the same file.
+
+   Movie:   downloadGroups[].items[].streamUrl
+   Series:  seriesDownloadGroups[].seasons[].episodes[].qualities[].streamUrl
+*/
 
 @Serializable
 data class LinksResponse(
     val type: String? = null,
     val externalId: String? = null,
     val siteKey: String? = null,
-    val playLinks: List<PlayLink> = emptyList(),
-    val downloadGroups: List<JsonObjectLike> = emptyList(),
-    val seasons: List<Season> = emptyList(),
-    val seriesDownloadGroups: List<JsonObjectLike> = emptyList(),
+    val playLinks: List<StreamLink> = emptyList(),
+    val downloadGroups: List<LinkGroup> = emptyList(),
+    val seasons: List<SeasonGroup> = emptyList(),
+    val seriesDownloadGroups: List<LinkGroup> = emptyList(),
     val access: Access? = null
-)
-
-@Serializable
-data class PlayLink(
-    val kind: String? = null,
-    val label: String? = null,
-    val quality: String? = null,
-    val url: String? = null,
-    val link: String? = null,
-    val source: String? = null,
-    val language: String? = null,
-    val dub: String? = null,
-    val episode: Int? = null,
-    val season: Int? = null
 ) {
-    /** The playable URL, whichever field carries it. */
-    val playUrl: String? get() = url ?: link ?: source
+    /** Every episode across all series groups, in server order. */
+    val allEpisodes: List<EpisodeItem>
+        get() = seriesDownloadGroups.flatMap { it.seasons }.flatMap { it.episodes }
+
+    /**
+     * Best playable URL: explicit play links first, then movie quality groups,
+     * then the first series episode. Null when the server returned no links.
+     */
+    fun bestStreamUrl(season: Int? = null, episode: Int? = null): String? {
+        playLinks.firstNotNullOfOrNull { it.playUrl }?.let { return it }
+        downloadGroups.asSequence()
+            .flatMap { it.items.asSequence() }
+            .firstNotNullOfOrNull { it.bestUrl }
+            ?.let { return it }
+        val episodes = allEpisodes
+        val chosen = episodes.firstOrNull { ep ->
+            (season == null || ep.season == season) && (episode == null || ep.episode == episode)
+        } ?: episodes.firstOrNull()
+        return chosen?.qualities?.firstNotNullOfOrNull { it.bestUrl }
+    }
 }
 
 @Serializable
-data class Season(
+data class StreamLink(
+    val label: String? = null,
+    val url: String? = null,
+    val kind: String? = null,
+    val mirror: Int? = null,
+    val streamUrl: String? = null
+) {
+    val playUrl: String? get() = streamUrl ?: url
+}
+
+@Serializable
+data class QualityItem(
+    val quality: String? = null,
+    val size: String? = null,
+    val streamUrl: String? = null,
+    val links: List<StreamLink> = emptyList()
+) {
+    val bestUrl: String?
+        get() = streamUrl
+            ?: links.firstNotNullOfOrNull { it.streamUrl }
+            ?: links.firstNotNullOfOrNull { it.url }
+}
+
+@Serializable
+data class EpisodeItem(
     val season: Int? = null,
+    val episode: Int? = null,
     val title: String? = null,
-    val episodes: List<Episode> = emptyList()
+    val qualities: List<QualityItem> = emptyList()
 )
 
 @Serializable
-data class Episode(
-    val episode: Int? = null,
+data class SeasonGroup(
     val season: Int? = null,
     val title: String? = null,
-    val durationMinutes: Int? = null
+    val episodes: List<EpisodeItem> = emptyList()
+)
+
+@Serializable
+data class LinkGroup(
+    val title: String? = null,
+    val items: List<QualityItem> = emptyList(),
+    val seasons: List<SeasonGroup> = emptyList()
 )
 
 @Serializable
 data class Access(
     val hasAccess: Boolean = false,
     val isExempt: Boolean = false,
-    val subscription: JsonObjectLike? = null,
+    val subscription: JsonElement? = null,
     val subscriptionsRequired: Boolean = false
-)
-
-/** Opaque payload we don't need to interpret yet; kept as a passthrough map. */
-@Serializable
-data class JsonObjectLike(
-    val title: String? = null,
-    val label: String? = null,
-    val quality: String? = null,
-    val items: List<PlayLink> = emptyList()
 )

@@ -131,18 +131,34 @@ fun DetailsScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 FocusButton("پخش", primary = true, onClick = {
                                     scope.launch {
-                                        val result = runCatching {
-                                            catalog.links(type, externalId, m.siteKey)
-                                        }
+                                        notice = null
+                                        val result = runCatching { catalog.links(type, externalId, m.siteKey) }
                                         val res = result.getOrNull()
-                                        val link = res?.playLinks?.firstOrNull()?.playUrl
-                                        when {
-                                            link != null ->
-                                                onPlay(catalog.streamProxy(link), m.displayTitle, m.titleEn)
-                                            res?.access?.hasAccess == false && !isLoggedIn ->
-                                                notice = "برای پخش باید وارد حساب کاربری شوید."
-                                            else ->
-                                                notice = "برای این عنوان لینک پخش در دسترس نیست (نیازمند اشتراک)."
+                                        if (res == null) {
+                                            notice = result.exceptionOrNull()?.message
+                                                ?: "خطا در دریافت لینک پخش"
+                                            return@launch
+                                        }
+                                        // Streams live in downloadGroups / seriesDownloadGroups,
+                                        // not in playLinks (which is usually empty).
+                                        val url = res.bestStreamUrl()
+                                        if (url != null) {
+                                            val subtitle = if (m.isSeries) {
+                                                val ep = res.allEpisodes.firstOrNull()
+                                                if (ep != null) {
+                                                    "فصل ${ep.season ?: 1} · قسمت ${ep.episode ?: 1}"
+                                                } else m.titleEn
+                                            } else m.titleEn
+                                            onPlay(catalog.streamProxy(url), m.displayTitle, subtitle)
+                                        } else {
+                                            notice = when {
+                                                res.access?.hasAccess == false && !isLoggedIn ->
+                                                    "برای پخش باید وارد حساب کاربری شوید."
+                                                res.access?.hasAccess == false ->
+                                                    "برای پخش این عنوان به اشتراک فعال نیاز دارید."
+                                                else ->
+                                                    "لینک پخشی برای این عنوان در دسترس نیست."
+                                            }
                                         }
                                     }
                                 })

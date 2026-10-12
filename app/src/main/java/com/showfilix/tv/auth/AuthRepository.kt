@@ -32,7 +32,7 @@ class AuthRepository(
             put("deviceId", session.deviceId())
         }.toString()
 
-        val root = api.json.parseToJsonElement(api.postRaw("/auth/login", body))
+        val root = api.json.parseToJsonElement(api.postRaw("/auth/login", body, retryOnAuth = false))
         val access = findString(root, "accessToken")
             ?: throw ApiException(0, "پاسخ سرور نامعتبر بود")
         val refresh = findString(root, "refreshToken")
@@ -55,7 +55,7 @@ class AuthRepository(
                 put("refreshToken", rt)
                 put("deviceId", session.deviceId())
             }.toString()
-            val root = api.json.parseToJsonElement(api.postRaw("/auth/refresh", body))
+            val root = api.json.parseToJsonElement(api.postRaw("/auth/refresh", body, retryOnAuth = false))
             val access = findString(root, "accessToken")
             if (access != null) {
                 session.saveSession(access, findString(root, "refreshToken") ?: rt, session.userName)

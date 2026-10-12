@@ -70,4 +70,29 @@ class ModelsTest {
         val access = checkNotNull(l.access)
         assertFalse(access.hasAccess)
     }
+
+    /**
+     * The reason playback failed: streams are in `downloadGroups[].items[].streamUrl`,
+     * not in `playLinks`. Guards the regression.
+     */
+    @Test
+    fun authenticatedMovieLinksExposeStreamUrl() {
+        val l = json.decodeFromString<LinksResponse>(read("links_auth_movie.json"))
+        assertTrue(checkNotNull(l.access).hasAccess)
+        assertTrue(l.playLinks.isEmpty())
+        assertEquals(1, l.downloadGroups.size)
+        assertEquals("BluRay 1080p", l.downloadGroups[0].items[0].quality)
+        assertEquals("https://cdn.example.test/a/movie-1080p.mkv", l.bestStreamUrl())
+    }
+
+    @Test
+    fun authenticatedSeriesLinksPickEpisode() {
+        val l = json.decodeFromString<LinksResponse>(read("links_auth_series.json"))
+        assertTrue(checkNotNull(l.access).hasAccess)
+        assertTrue(l.playLinks.isEmpty())
+        assertEquals(2, l.allEpisodes.size)
+        // first episode falls back to its mirror link when the quality has no streamUrl
+        assertEquals("https://cdn.example.test/s1e1-mirror1.mkv", l.bestStreamUrl())
+        assertEquals("https://cdn.example.test/s1e2.mkv", l.bestStreamUrl(season = 1, episode = 2))
+    }
 }

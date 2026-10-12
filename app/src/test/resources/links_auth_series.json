@@ -1,0 +1,60 @@
+{
+  "type": "series",
+  "externalId": "tt40385667",
+  "siteKey": "mymoviz",
+  "playLinks": [],
+  "downloadGroups": [],
+  "seasons": [],
+  "seriesDownloadGroups": [
+    {
+      "title": "دانلود نسخه اصلی",
+      "seasons": [
+        {
+          "season": 1,
+          "title": "فصل 1",
+          "episodes": [
+            {
+              "season": 1,
+              "episode": 1,
+              "title": "قسمت 1",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "882 MB",
+                  "links": [
+                    {
+                      "label": "دانلود",
+                      "url": "https://cdn.example.test/s1e1-mirror1.mkv",
+                      "kind": "download",
+                      "mirror": 1,
+                      "streamUrl": "https://cdn.example.test/s1e1-mirror1.mkv"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "season": 1,
+              "episode": 2,
+              "title": "قسمت 2",
+              "qualities": [
+                {
+                  "quality": "WEB-DL 1080p",
+                  "size": "800 MB",
+                  "links": [],
+                  "streamUrl": "https://cdn.example.test/s1e2.mkv"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "access": {
+    "hasAccess": true,
+    "isExempt": true,
+    "subscription": null,
+    "subscriptionsRequired": false
+  }
+}

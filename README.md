@@ -16,12 +16,12 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.2-debug.apk`](dist/showfilix-tv-1.0.2-debug.apk) |
+| APK (debug, installable) | [`dist/showfilix-tv-1.0.3-debug.apk`](dist/showfilix-tv-1.0.3-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.2-debug.apk
+adb install -r showfilix-tv-1.0.3-debug.apk
 adb shell am start -n com.showfilix.tv/.MainActivity
 ```
 
@@ -33,7 +33,9 @@ The app appears under Android TV apps as **شوفیلیکس**.
 - **Browse** — paginated poster grid for movies and series with sort filters.
 - **Search** — on-screen keyboard with live results.
 - **Details** — full metadata, cast, and "similar titles".
-- **Playback** — ExoPlayer (HLS) through the site's `/api/media/stream` proxy.
+- **Playback** — ExoPlayer through the site's `/api/media/stream` proxy. Streams are
+  progressive MKV/MP4 and are read from `downloadGroups` / `seriesDownloadGroups`
+  (the `playLinks` array is usually empty).
 - **Login** — e-mail + password (`POST /api/auth/login`), matching the website's own
   form. On-screen keyboard with Shift / caps-lock, and clipboard **paste** / **copy**
   for both the e-mail and password fields.
@@ -61,7 +63,7 @@ front-end's client bundles. The full map is in
 | `GET /api/media/search?q=` | no | Search |
 | `GET /api/media/{type}/{imdbId}` | no | Details (`tt…` ids) |
 | `GET /api/media/{type}/{id}/similar` | no | Related titles |
-| `GET /api/media/{type}/{id}/links` | **yes** | Playback links |
+| `GET /api/media/{type}/{id}/links` | **yes** | Playback links — streams are in `downloadGroups`/`seriesDownloadGroups[].items[].streamUrl` |
 | `GET /api/media/stream?url=` | — | Stream proxy |
 | `POST /api/auth/login` | — | E-mail + password sign-in (`{email,password,deviceId}` → `{accessToken,refreshToken,expiresIn}`) |
 | `GET /api/auth/me`, `POST /api/auth/refresh`, `/logout` | — | Session |
@@ -106,13 +108,13 @@ captured from the live API** (saved under `app/src/test/resources/`) with the ap
 - **Sign-in is e-mail + password only** (matching the website). Google OAuth is not
   implemented, and the phone-OTP endpoints the backend also exposes are not surfaced.
 - Account **registration** is not implemented in-app; create the account on the website.
-- A successful sign-in has **not been exercised against a real account** (none was
-  available), so the session round-trip is verified only up to the API contract:
-  the request body/fields and the `{accessToken,refreshToken,expiresIn}` envelope are
-  confirmed from the live API and the site's client bundle, and the failure path
-  (`ACCOUNT_NOT_FOUND`) was reproduced live.
-- Playback requires an active subscription; without one, the app shows a
+- Sign-in and the full playback-link chain have been exercised against a real
+  account over the API: login → `links` (`hasAccess: true`) → signed stream URL →
+  `206` byte range with real MKV data through the proxy. What has **not** been run is
+  the in-app ExoPlayer decode, because no Android TV device/emulator was available.
+- Playback requires an account with access; otherwise the app shows a
   "subscription required" notice.
+- Access tokens last ~5 minutes; the client refreshes them automatically on a 401.
 - Season/episode browsing, watchlist and continue-watching are not implemented yet.
 - The shipped APK is a **debug** build (signed with the Android debug key). Build a
   release variant with your own keystore for distribution.

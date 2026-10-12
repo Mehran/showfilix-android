@@ -1,0 +1,42 @@
+{
+  "type": "movie",
+  "externalId": "tt0110912",
+  "siteKey": "mymoviz",
+  "playLinks": [],
+  "downloadGroups": [
+    {
+      "title": "دانلود نسخه اصلی",
+      "items": [
+        {
+          "quality": "BluRay 1080p",
+          "size": "2.3 GB",
+          "links": [
+            {
+              "label": "دانلود",
+              "url": "https://cdn.example.test/a/mirror1.mkv",
+              "kind": "download",
+              "mirror": 1,
+              "streamUrl": "https://cdn.example.test/a/mirror1.mkv"
+            },
+            {
+              "label": "لینک ایران",
+              "url": "https://cdn.example.test/b/mirror2.mkv",
+              "kind": "download",
+              "mirror": 2,
+              "streamUrl": "https://cdn.example.test/b/mirror2.mkv"
+            }
+          ],
+          "streamUrl": "https://cdn.example.test/a/movie-1080p.mkv"
+        }
+      ]
+    }
+  ],
+  "seasons": [],
+  "seriesDownloadGroups": [],
+  "access": {
+    "hasAccess": true,
+    "isExempt": true,
+    "subscription": null,
+    "subscriptionsRequired": false
+  }
+}

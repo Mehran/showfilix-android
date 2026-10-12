@@ -4,6 +4,8 @@ import com.showfilix.tv.auth.SessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -17,7 +19,10 @@ class ApiException(val status: Int, message: String) : IOException(message)
 
 /**
  * Thin client over the showfilix.com JSON API (see showfilix-api-findings.md).
- * The API lives under `https://showfilix.com/api`.
+ *
+ * The API lives under `https://showfilix.com/api`. Access tokens are short lived
+ * (the JWT is valid for 5 minutes), so a 401 triggers a single refresh-and-retry
+ * through [onUnauthorized].
  */
 class ApiClient(private val session: SessionStore) {
 
@@ -25,6 +30,9 @@ class ApiClient(private val session: SessionStore) {
         const val SITE = "https://showfilix.com"
         const val BASE = "$SITE/api"
     }
+
+    /** Installed by the DI container; refreshes the session. Returns true on success. */
+    var onUnauthorized: (suspend () -> Boolean)? = null
 
     val json: Json = Json {
         ignoreUnknownKeys = true
@@ -54,36 +62,52 @@ class ApiClient(private val session: SessionStore) {
             .header("Accept", "application/json")
             .header("x-visitor-id", session.visitorId())
             .header("User-Agent", "ShowfilixTV/1.0 (Android TV)")
+            .header("Origin", SITE)
+            .header("Referer", "$SITE/")
         session.accessToken()?.let { b.header("Authorization", "Bearer $it") }
         return b
     }
 
-    /** GET a JSON payload as text, throwing [ApiException] on non-2xx. */
-    suspend fun getRaw(path: String, params: Map<String, String?> = emptyMap()): String =
-        withContext(Dispatchers.IO) {
-            val resp = http.newCall(newRequest(path, params).get().build()).execute()
-            resp.use {
-                val body = it.body?.string().orEmpty()
-                if (!it.isSuccessful) throw ApiException(it.code, extractMessage(body, it.code))
-                body
-            }
+    private fun run(req: Request): Pair<Int, String> {
+        http.newCall(req).execute().use { resp ->
+            return resp.code to resp.body?.string().orEmpty()
         }
+    }
+
+    private suspend fun send(
+        path: String,
+        params: Map<String, String?>,
+        body: String?,
+        retryOnAuth: Boolean
+    ): String = withContext(Dispatchers.IO) {
+        fun build() = newRequest(path, params)
+            .apply { if (body != null) post(body.toRequestBody(jsonMedia)) else get() }
+            .build()
+
+        val (code, payload) = run(build())
+        if (code in 200..299) return@withContext payload
+
+        if (code == 401 && retryOnAuth && onUnauthorized?.invoke() == true) {
+            val (code2, payload2) = run(build())
+            if (code2 in 200..299) return@withContext payload2
+            throw ApiException(code2, extractMessage(payload2, code2))
+        }
+        throw ApiException(code, extractMessage(payload, code))
+    }
+
+    /** GET a JSON payload as text, throwing [ApiException] on non-2xx. */
+    suspend fun getRaw(
+        path: String,
+        params: Map<String, String?> = emptyMap(),
+        retryOnAuth: Boolean = true
+    ): String = send(path, params, body = null, retryOnAuth = retryOnAuth)
 
     /** POST a JSON body. */
     suspend fun postRaw(
         path: String,
         jsonBody: String,
-        accessTokenOverride: String? = null
-    ): String = withContext(Dispatchers.IO) {
-        val b = newRequest(path, emptyMap()).post(jsonBody.toRequestBody(jsonMedia))
-        if (accessTokenOverride != null) b.header("Authorization", "Bearer $accessTokenOverride")
-        val resp = http.newCall(b.build()).execute()
-        resp.use {
-            val body = it.body?.string().orEmpty()
-            if (!it.isSuccessful) throw ApiException(it.code, extractMessage(body, it.code))
-            body
-        }
-    }
+        retryOnAuth: Boolean = true
+    ): String = send(path, emptyMap(), body = jsonBody, retryOnAuth = retryOnAuth)
 
     suspend inline fun <reified T> get(path: String, params: Map<String, String?> = emptyMap()): T {
         val raw = getRaw(path, params)
@@ -96,12 +120,11 @@ class ApiClient(private val session: SessionStore) {
     }
 
     private fun extractMessage(body: String, code: Int): String = try {
-        val obj = json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject
+        val obj = json.parseToJsonElement(body) as? JsonObject
         when (val msg = obj?.get("message")) {
             null -> "HTTP $code"
             // validation errors arrive as an array of strings
-            is kotlinx.serialization.json.JsonArray ->
-                msg.joinToString("، ") { it.toString().trim('"') }
+            is JsonArray -> msg.joinToString("، ") { it.toString().trim('"') }
             else -> msg.toString().trim('"')
         }
     } catch (_: Exception) {

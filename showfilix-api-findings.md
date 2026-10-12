@@ -41,19 +41,45 @@ network, airDay, airingStatus  (series only)
 
 ## Playback links (requires login/subscription)
 
-`GET /api/media/{type}/{externalId}/links?siteKey=<provider>` →
+`GET /api/media/{type}/{externalId}/links?siteKey=<provider>` with the Bearer token →
 
 ```
-{ type, externalId, siteKey, playLinks[], downloadGroups[],
-  seasons[], seriesDownloadGroups[],
+{ type, externalId, siteKey,
+  playLinks[],                 // usually EMPTY - not where streams live
+  downloadGroups[],            // movies: the real streams
+  seasons[],                   // usually empty
+  seriesDownloadGroups[],      // series: the real streams
   access:{ hasAccess, isExempt, subscription, subscriptionsRequired } }
 ```
 
-When logged out: `playLinks:[]`, `access.hasAccess:false`. Playback therefore
-requires a subscription account.
+**Where the stream URL actually is** (this is the important part):
 
-Stream proxy used by the web player: `GET /api/media/stream?url=<https url>`
-(external URL must be https). Subtitles: `GET /api/media/subtitle/<...>?format=vtt`.
+```
+movie  : downloadGroups[].items[].streamUrl
+         downloadGroups[].items[].links[]  -> { label, url, kind:"download", mirror, streamUrl }
+series : seriesDownloadGroups[].seasons[].episodes[].qualities[].streamUrl | .links[]
+         (each episode: { season, episode, title, qualities:[{ quality, size, streamUrl, links[] }] })
+```
+
+**Verified live** (account with access):
+
+- Bearer token → `access.hasAccess: true, isExempt: true` (auth is header-based; a
+  cookie-only request returns `hasAccess: false`).
+- `playLinks` was `[]` while `downloadGroups` carried the file — a client that only
+  reads `playLinks` sees "no links" and wrongly reports "subscription required".
+- Logged out → `playLinks:[]`, `downloadGroups:[]`, `access.hasAccess:false`.
+
+**Streaming**: the CDN URLs are IP-signed and play progressively (MKV/MP4, EBML or
+`ftyp` magic), supporting `Range`. Proxy with
+`GET /api/media/stream?url=<https url>` — verified `206 Partial Content`,
+`Accept-Ranges: bytes`. Subtitles: `GET /api/media/subtitle/<...>?format=vtt`.
+
+**Tokens are short lived**: the access JWT is valid for **5 minutes**
+(`expiresIn: "5m"`), so clients must refresh via `POST /api/auth/refresh` on 401.
+
+**Cloudflare**: the login endpoint rejects non-browser signatures
+(`403 error 1010 browser_signature_banned` for e.g. `python-urllib`). A descriptive
+custom UA plus `Origin`/`Referer` headers was accepted; keep those headers.
 
 ## Auth (`/api/auth/*`, NestJS)
 

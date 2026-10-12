@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -32,12 +31,10 @@ fun PlayerScreen(url: String, title: String, subtitle: String?) {
             .setMediaSourceFactory(DefaultMediaSourceFactory(context))
             .build()
             .apply {
-                setMediaItem(
-                    MediaItem.Builder()
-                        .setUri(url)
-                        .setMimeType(MimeTypes.APPLICATION_M3U8)
-                        .build()
-                )
+                // Do NOT force a MIME type: showfilix streams are progressive
+                // MKV/MP4 files served via /api/media/stream. Forcing HLS made
+                // playback fail; let ExoPlayer sniff the container instead.
+                setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 playWhenReady = true
             }
