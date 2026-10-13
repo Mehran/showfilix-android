@@ -1,14 +1,14 @@
-# Showfilix for Android TV (unofficial)
+# Mehran Movie for Android TV (unofficial)
 
 A native **Android TV** client for [showfilix.com](https://showfilix.com), written in
-Kotlin with Jetpack Compose. Modelled on the community project
-[`msharifi99/30nama-tizenos`](https://github.com/msharifi99/30nama-tizenos) (a Tizen TV
-client for 30nama) but rebuilt as a native Android TV app that talks to showfilix's
-own REST API.
+Kotlin with Jetpack Compose and rebranded as **Mehran Movie**. Modelled on the
+community project [`msharifi99/30nama-tizenos`](https://github.com/msharifi99/30nama-tizenos)
+(a Tizen TV client for 30nama) but rebuilt as a native Android TV app that talks to
+showfilix's own REST API.
 
 > **Disclaimer:** this is an unofficial, unaffiliated project. It is not endorsed by or
-> connected to showfilix. A valid showfilix subscription is required for playback.
-> No content is bundled with this app.
+> connected to showfilix or Mehran. A valid showfilix subscription is required for
+> playback. No content is bundled with this app.
 
 ---
 
@@ -16,19 +16,22 @@ own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/showfilix-tv-1.0.6-debug.apk`](dist/showfilix-tv-1.0.6-debug.apk) |
+| APK (debug, installable) | [`dist/mehran-movie-1.0.7-debug.apk`](dist/mehran-movie-1.0.7-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r showfilix-tv-1.0.6-debug.apk
-adb shell am start -n com.showfilix.tv/.MainActivity
+adb install -r mehran-movie-1.0.7-debug.apk
+adb shell am start -n com.mehran.movie/.MainActivity
 ```
 
-The app appears under Android TV apps as **شوفیلیکس**.
+The app appears under Android TV apps as **Mehran Movie**.
 
 ## Features
 
+- **Intro** — a ~2.7s animated launch screen: the Mehran Movie clapperboard mascot
+  pops in, claps once, blinks, and the `MEHRAN MOVIE` lockup fades up under a light
+  sweep before the app takes over.
 - **Home** — hero billboard plus content rows, from `/api/media/home`.
 - **Browse** — paginated poster grid for movies and series with sort filters.
 - **Search** — on-screen keyboard with live results.
@@ -50,14 +53,18 @@ The app appears under Android TV apps as **شوفیلیکس**.
 ## Screens & flow
 
 ```
-Home ──▶ Details ──▶ Playback picker ──▶ Player
- │        └── version ▸ season ▸ episode ▸ quality
- │  └──▶ Browse (movies / series) ──▶ Details
- └──▶ Search ──▶ Details
+Intro ──▶ Home ──▶ Details ──▶ Playback picker ──▶ Player
+           │        └── version ▸ season ▸ episode ▸ quality
+           │  └──▶ Browse (movies / series) ──▶ Details
+           └──▶ Search ──▶ Details
 Login (e-mail + password) is reachable from Home and Details.
 ```
 
 ## Reverse-engineered API
+
+The app is branded Mehran Movie, but the backend it talks to is still
+**showfilix.com** — that host is the product's real API and is intentionally left
+untouched (`ApiClient.SITE`, the network security config, and the token keys).
 
 showfilix publishes no public API; the endpoints were recovered from the live
 front-end's client bundles. The full map is in
@@ -88,26 +95,37 @@ export ANDROID_HOME=/path/to/android-sdk
 
 `local.properties` must point at the SDK (`sdk.dir=...`), or set `ANDROID_HOME`.
 
+## Brand assets
+
+The launcher icon and the Android TV banner are generated from the same mascot
+geometry as the animated intro:
+
+```bash
+python3 tools/make_brand_assets.py   # writes res/drawable-*/ic_launcher.png and tv_banner.png
+```
+
 ## Project layout
 
 ```
-app/src/main/java/com/showfilix/tv/
+app/src/main/java/com/mehran/movie/
   MainActivity.kt        entry point, fullscreen immersive
-  ShowfilixApp.kt        Application + manual DI container
+  MehranMovieApp.kt      Application + manual DI container
   data/                  API client, models, catalog repository
-  auth/                  session storage + OTP auth repository
+  auth/                  session storage + auth repository
   ui/                    theme, navigator, screens, components
+  ui/SplashIntro.kt      animated launch intro
 app/src/test/            unit tests over real captured API payloads
+tools/                   brand asset generator
 ```
 
 ## Testing
 
-`app/src/test/java/com/showfilix/tv/data/ModelsTest.kt` decodes **real payloads
+`app/src/test/java/com/mehran/movie/data/ModelsTest.kt` decodes **real payloads
 captured from the live API** (saved under `app/src/test/resources/`) with the app's
 `@Serializable` models, so the tests fail if the wire format drifts.
 
 ```
-./gradlew :app:testDebugUnitTest   # 5 tests, 0 failures
+./gradlew :app:testDebugUnitTest   # 11 tests, 0 failures
 ```
 
 ## Known limitations

@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ShowfilixTV"
+rootProject.name = "MehranMovieTV"
 include(":app")

@@ -2,6 +2,6 @@
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
 -keepclassmembers class **$$serializer { *; }
--keepclasseswithmembers class com.showfilix.tv.data.** {
+-keepclasseswithmembers class com.mehran.movie.data.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
