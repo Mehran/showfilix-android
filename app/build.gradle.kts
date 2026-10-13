@@ -37,6 +37,21 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Opt-in per-ABI packaging, e.g. `./gradlew :app:assembleDebug -Pabi=armeabi-v7a`
+    // produces app-armeabi-v7a-debug.apk carrying only that ABI's native libraries.
+    // Without -Pabi the build stays universal (all ABIs + app-debug.apk).
+    providers.gradleProperty("abi").orNull?.let { abi ->
+        splits {
+            abi {
+                isEnable = true
+                reset()
+                include(abi)
+                isUniversalApk = true
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

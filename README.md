@@ -25,6 +25,11 @@ adb install -r mehran-movie-1.0.7-debug.apk
 adb shell am start -n com.mehran.movie/.MainActivity
 ```
 
+That APK is universal: it carries `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`, so
+it installs on 32-bit ARM TV boxes unchanged. A dedicated **armeabi-v7a** build is
+also attached to the [release](../../releases/latest)
+(`mehran-movie-1.0.7-armeabi-v7a-debug.apk`) if you prefer an ABI-specific APK.
+
 The app appears under Android TV apps as **Mehran Movie**.
 
 ## Features
@@ -94,6 +99,16 @@ export ANDROID_HOME=/path/to/android-sdk
 ```
 
 `local.properties` must point at the SDK (`sdk.dir=...`), or set `ANDROID_HOME`.
+
+### Per-ABI APKs
+
+The only native code in the app is Compose's `libandroidx.graphics.path.so`, shipped
+for all four ABIs, so the default build is universal. To produce an APK holding a
+single ABI's libraries:
+
+```bash
+./gradlew :app:assembleDebug -Pabi=armeabi-v7a   # -> app-armeabi-v7a-debug.apk
+```
 
 ## Brand assets
 
