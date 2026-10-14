@@ -16,19 +16,19 @@ showfilix's own REST API.
 
 | Artifact | Link |
 |---|---|
-| APK (debug, installable) | [`dist/mehran-movie-1.0.7-debug.apk`](dist/mehran-movie-1.0.7-debug.apk) |
+| APK (debug, installable) | [`dist/mehran-movie-1.0.8-debug.apk`](dist/mehran-movie-1.0.8-debug.apk) |
 | Release | [Releases page](../../releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
-adb install -r mehran-movie-1.0.7-debug.apk
+adb install -r mehran-movie-1.0.8-debug.apk
 adb shell am start -n com.mehran.movie/.MainActivity
 ```
 
 That APK is universal: it carries `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`, so
 it installs on 32-bit ARM TV boxes unchanged. A dedicated **armeabi-v7a** build is
 also attached to the [release](../../releases/latest)
-(`mehran-movie-1.0.7-armeabi-v7a-debug.apk`) if you prefer an ABI-specific APK.
+(`mehran-movie-1.0.8-armeabi-v7a-debug.apk`) if you prefer an ABI-specific APK.
 
 The app appears under Android TV apps as **Mehran Movie**.
 
@@ -51,8 +51,11 @@ The app appears under Android TV apps as **Mehran Movie**.
   (the `playLinks` array is usually empty). The title/quality overlay fades out a few
   seconds after playback starts and comes back when paused.
 - **Login** — e-mail + password (`POST /api/auth/login`), matching the website's own
-  form. On-screen keyboard with Shift / caps-lock, and clipboard **paste** / **copy**
-  for both the e-mail and password fields.
+  form. Both fields are real input fields, so selecting one raises the **native
+  Android keyboard** (e-mail / password IME actions, with `Next` moving to the
+  password and `Done` submitting). The screen pads and scrolls for the keyboard
+  insets, so the **Login** button stays visible while typing instead of being
+  hidden behind the keyboard.
 - **TV-first UI** — leanback launcher entry, D-pad navigation, focus rings.
 
 ## Screens & flow
