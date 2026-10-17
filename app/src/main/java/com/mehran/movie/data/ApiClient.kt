@@ -21,8 +21,13 @@ class ApiException(val status: Int, message: String) : IOException(message)
  * Thin client over the showfilix.com JSON API (see showfilix-api-findings.md).
  *
  * The API lives under `https://showfilix.com/api`. Access tokens are short lived
- * (the JWT is valid for 5 minutes), so a 401 triggers a single refresh-and-retry
- * through [onUnauthorized].
+ * (the JWT is valid for 5 minutes), so a 401/403 triggers a single
+ * refresh-and-retry through [onUnauthorized].
+ *
+ * Auth is header based: the Bearer token is read from [SessionStore] for every
+ * request. There is deliberately no CookieJar and no global header mutation, so
+ * creating or releasing a video player cannot wipe the session — the tokens
+ * live in SharedPreferences and nothing in the player touches them.
  */
 class ApiClient(private val session: SessionStore) {
 
@@ -33,6 +38,13 @@ class ApiClient(private val session: SessionStore) {
 
     /** Installed by the DI container; refreshes the session. Returns true on success. */
     var onUnauthorized: (suspend () -> Boolean)? = null
+
+    /**
+     * Installed by the DI container. Fired when a request that carried a token
+     * was rejected and the session could not be repaired, i.e. the viewer must
+     * sign in again. Called from an IO thread.
+     */
+    var onSessionExpired: (() -> Unit)? = null
 
     val json: Json = Json {
         ignoreUnknownKeys = true
@@ -84,15 +96,37 @@ class ApiClient(private val session: SessionStore) {
             .apply { if (body != null) post(body.toRequestBody(jsonMedia)) else get() }
             .build()
 
+        // The token this attempt was sent with. Used to decide whether an
+        // auth failure is worth refreshing and whether it is a real expiry.
+        val sentToken = session.accessToken
+
         val (code, payload) = run(build())
         if (code in 200..299) return@withContext payload
 
-        if (code == 401 && retryOnAuth && onUnauthorized?.invoke() == true) {
-            val (code2, payload2) = run(build())
-            if (code2 in 200..299) return@withContext payload2
-            throw ApiException(code2, extractMessage(payload2, code2))
+        // 401 = expired/invalid token. The API also uses 403 when a protected
+        // route is hit without a valid session, so both are recoverable.
+        val authFailure = code == 401 || code == 403
+
+        if (authFailure && retryOnAuth && !sentToken.isNullOrBlank()) {
+            if (onUnauthorized?.invoke() == true) {
+                // build() re-reads the session, so this retry carries the new token.
+                val (code2, payload2) = run(build())
+                if (code2 in 200..299) return@withContext payload2
+                if (code2 == 401 || code2 == 403) notifySessionExpired()
+                throw ApiException(code2, extractMessage(payload2, code2))
+            }
+            // The refresh did not succeed. AuthRepository clears the stored
+            // tokens when the server rejected the refresh token, so an empty
+            // store means the session is gone; a network hiccup keeps them and
+            // is surfaced as a normal, retryable error instead.
+            if (session.refreshToken.isNullOrBlank()) notifySessionExpired()
         }
         throw ApiException(code, extractMessage(payload, code))
+    }
+
+    /** Tells the UI to fall back to the login screen instead of a paywall. */
+    private fun notifySessionExpired() {
+        onSessionExpired?.invoke()
     }
 
     /** GET a JSON payload as text, throwing [ApiException] on non-2xx. */

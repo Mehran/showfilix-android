@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +38,18 @@ fun MehranMovieRoot(container: AppContainer) {
 private fun AppContent(container: AppContainer) {
     val nav = remember { Navigator() }
     var isLoggedIn by remember { mutableStateOf(container.session.isLoggedIn) }
+    val sessionExpired by container.sessionExpired.collectAsState()
+
+    // A request that stayed 401/403 after a refresh attempt means the stored
+    // session is dead. Show Login instead of leaving the viewer stuck on a
+    // "subscription required" wall (e.g. after returning from playback, when
+    // the short-lived access token has expired).
+    LaunchedEffect(sessionExpired) {
+        if (!sessionExpired) return@LaunchedEffect
+        isLoggedIn = false
+        container.acknowledgeSessionExpired()
+        if (nav.current !is Screen.Login) nav.push(Screen.Login)
+    }
 
     val openDetails: (MediaItem) -> Unit = { item ->
         nav.push(Screen.Details(item.type ?: "movie", item.externalId ?: "", item.displayTitle))

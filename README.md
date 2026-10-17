@@ -39,14 +39,17 @@ The app appears under Android TV apps as **Mehran Movie**.
   sweep before the app takes over.
 - **Home** — hero billboard plus content rows, from `/api/media/home`.
 - **Browse** — paginated poster grid for movies and series with sort filters.
-- **Search** — on-screen keyboard with live results.
+- **Search** — on-screen keyboard with live results, and a real text field whose
+  IME action key is **Search** (the remote/USB-keyboard Enter submits too).
 - **Details** — full metadata, cast, and "similar titles".
 - **Playback picker** — pressing Play opens a picker with every available
   **version** (دوبله فارسی / نسخه اصلی), **season**, **episode** and **quality**
   (1080p/720p/480p …) reported by the API, then plays the chosen stream. The screen
   is built around the title's own artwork: a dimmed backdrop, the poster, the year /
   rating / runtime line, the top cast with avatars, and the plot — so it is never blank.
-- **Playback** — ExoPlayer through the site's `/api/media/stream` proxy. Streams are
+- **Playback** — ExoPlayer through the site's `/api/media/stream` proxy, holding
+  `FLAG_KEEP_SCREEN_ON` while playback is running so the box's screensaver never
+  interrupts a film (cleared on pause, end and exit). Streams are
   progressive MKV/MP4 and are read from `downloadGroups` / `seriesDownloadGroups`
   (the `playLinks` array is usually empty). The title/quality overlay fades out a few
   seconds after playback starts and comes back when paused.

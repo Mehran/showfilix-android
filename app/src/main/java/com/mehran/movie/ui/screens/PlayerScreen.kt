@@ -1,6 +1,10 @@
 package com.mehran.movie.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,6 +47,8 @@ fun PlayerScreen(url: String, title: String, subtitle: String?) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
     var overlayVisible by remember { mutableStateOf(true) }
+    // True while playback is wanted: covers buffering too, but not pause/end.
+    var keepScreenOn by remember { mutableStateOf(true) }
 
     val player = remember {
         ExoPlayer.Builder(context)
@@ -63,11 +69,36 @@ fun PlayerScreen(url: String, title: String, subtitle: String?) {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
             }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                keepScreenOn = player.wantsScreenOn()
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                keepScreenOn = player.wantsScreenOn()
+            }
         }
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
             player.release()
+        }
+    }
+
+    // Keep the NetBox awake while a video is on screen. FLAG_KEEP_SCREEN_ON
+    // suppresses the system screensaver/idle timeout for as long as the flag is
+    // set; it is cleared on pause, on end of playback and whenever this screen
+    // leaves composition, so the box can sleep normally afterwards.
+    val activity = context.findActivity()
+    DisposableEffect(activity, keepScreenOn) {
+        val window = activity?.window
+        if (keepScreenOn) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -128,4 +159,21 @@ fun PlayerScreen(url: String, title: String, subtitle: String?) {
             }
         }
     }
+}
+
+/**
+ * Whether playback should currently hold the screen on. `isPlaying` alone is
+ * not enough: it is false while the stream buffers after a resume, which would
+ * let the screensaver start mid-playback.
+ */
+private fun Player.wantsScreenOn(): Boolean =
+    playWhenReady &&
+        playbackState != Player.STATE_IDLE &&
+        playbackState != Player.STATE_ENDED
+
+/** Compose hands out a [Context]; the keep-screen-on flag lives on the Activity window. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

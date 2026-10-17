@@ -179,12 +179,21 @@ fun LoadingBox(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ErrorBox(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorBox(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Optional sign-in action for screens where the error may be a dead session. */
+    onLogin: (() -> Unit)? = null
+) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(message, color = Text2, fontSize = 18.sp)
             Spacer(Modifier.height(16.dp))
-            FocusButton(text = "تلاش دوباره", onClick = onRetry)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                onLogin?.let { FocusButton(text = "ورود", primary = true, onClick = it) }
+                FocusButton(text = "تلاش دوباره", onClick = onRetry)
+            }
         }
     }
 }

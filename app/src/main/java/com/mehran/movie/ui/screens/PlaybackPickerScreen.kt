@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.mehran.movie.data.ApiException
 import com.mehran.movie.data.CatalogRepository
 import com.mehran.movie.data.LinksResponse
 import com.mehran.movie.data.MediaItem
@@ -78,6 +79,17 @@ fun PlaybackPickerScreen(
         state = UiState.Loading
         state = try {
             UiState.Ready(catalog.links(media.type ?: "movie", media.externalId ?: "", media.siteKey))
+        } catch (e: ApiException) {
+            // A rejected session is not a paywall. Say so, and keep the login
+            // action available instead of showing "subscription required".
+            if (e.status == 401 || e.status == 403) {
+                UiState.Error(
+                    if (isLoggedIn) "نشست شما منقضی شده است؛ لطفاً دوباره وارد شوید."
+                    else "برای پخش باید وارد حساب کاربری شوید."
+                )
+            } else {
+                UiState.Error(e.message ?: "خطا در دریافت لینک‌های پخش")
+            }
         } catch (e: Exception) {
             UiState.Error(e.message ?: "خطا در دریافت لینک‌های پخش")
         }
@@ -105,7 +117,11 @@ fun PlaybackPickerScreen(
 
         when (val s = state) {
             is UiState.Loading -> LoadingBox()
-            is UiState.Error -> ErrorBox(s.message, onRetry = { reloadKey++ })
+            is UiState.Error -> ErrorBox(
+                message = s.message,
+                onRetry = { reloadKey++ },
+                onLogin = onLogin
+            )
             is UiState.Ready -> Row(Modifier.fillMaxSize()) {
                 InfoPanel(media)
                 Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -264,8 +280,15 @@ private fun Selectors(
                 color = Text2, fontSize = 17.sp
             )
             Spacer(Modifier.height(14.dp))
+            // Always offer sign-in: when the server has dropped the session the
+            // screen looks exactly like a paywall, and only a fresh login can
+            // tell the two apart.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (!isLoggedIn) FocusButton("ورود", primary = true, onClick = onLogin)
+                FocusButton(
+                    text = if (isLoggedIn) "ورود مجدد" else "ورود",
+                    primary = true,
+                    onClick = onLogin
+                )
                 FocusButton("تلاش دوباره", onClick = onReload)
             }
             return@Column
