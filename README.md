@@ -17,7 +17,7 @@ showfilix's own REST API.
 | Artifact | Link |
 |---|---|
 | APK (debug, installable) | [`dist/mehran-movie-1.0.9-debug.apk`](dist/mehran-movie-1.0.9-debug.apk) |
-| Release | [Releases page](../../releases/latest) |
+| Release | [Releases page](https://github.com/Mehran/showfilix-android/releases/latest) |
 
 ```bash
 adb connect <tv-ip>:5555
@@ -27,7 +27,7 @@ adb shell am start -n com.mehran.movie/.MainActivity
 
 That APK is universal: it carries `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`, so
 it installs on 32-bit ARM TV boxes unchanged. A dedicated **armeabi-v7a** build is
-also attached to the [release](../../releases/latest)
+also attached to the [release](https://github.com/Mehran/showfilix-android/releases/latest)
 (`mehran-movie-1.0.9-armeabi-v7a-debug.apk`) if you prefer an ABI-specific APK.
 
 The app appears under Android TV apps as **Mehran Movie**.
