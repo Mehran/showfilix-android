@@ -51,7 +51,24 @@ class AuthRepository(
             ?: findString(root, "name")
             ?: findString(root, "email")
             ?: email.trim()
-        session.saveSession(access, refresh, name)
+        session.saveSession(access, refresh, name, expiryMillis(root))
+    }
+
+    /**
+     * Brings the stored session up to date on app start and on resume.
+     *
+     * Access tokens live ~5 minutes, so after any idle period the first
+     * protected call would otherwise have to discover the expiry with a 401.
+     * Refreshing here (and persisting the rotated tokens) is what keeps the
+     * viewer signed in across restarts instead of falling back to the login
+     * screen.
+     */
+    suspend fun ensureFreshSession() {
+        if (session.accessToken.isNullOrBlank()) return
+        if (session.refreshToken.isNullOrBlank()) return
+        // Expiry is 0 for sessions saved by older builds; refresh once to learn it.
+        if (session.accessExpiresAt > 0L && !session.isAccessTokenExpiring()) return
+        refreshIfPossible()
     }
 
     suspend fun me(): JsonElement = withContext(Dispatchers.IO) {
@@ -84,15 +101,21 @@ class AuthRepository(
                 )
                 val access = findString(root, "accessToken")
                 if (access != null) {
-                    session.saveSession(access, findString(root, "refreshToken") ?: rt, session.userName)
+                    session.saveSession(
+                        access,
+                        findString(root, "refreshToken") ?: rt,
+                        session.userName,
+                        expiryMillis(root)
+                    )
                     true
                 } else {
                     false
                 }
             } catch (e: ApiException) {
-                // 401/403: the refresh token was rejected. Anything else is
-                // treated as transient so a flaky network does not log out.
-                if (e.status == 401 || e.status == 403) session.clear()
+                // Only a real rejection of the refresh token ends the session.
+                // A 403 also comes from Cloudflare/WAF blocks and rate limits;
+                // clearing on those used to sign the viewer out for no reason.
+                if (isTokenRejection(e)) session.clear()
                 false
             } catch (_: Exception) {
                 false
@@ -111,16 +134,67 @@ class AuthRepository(
         session.clear()
     }
 
+    private fun isTokenRejection(e: ApiException): Boolean = isTokenRejection(e.status, e.body)
+
+    /** Absolute expiry of the access token carried by an auth response, 0 if absent. */
+    private fun expiryMillis(el: JsonElement): Long =
+        expiresAtFrom(findPrimitive(el, "expiresIn")?.content)
+
     /** Depth-first search for the first string value under [key]. */
-    private fun findString(el: JsonElement, key: String): String? {
+    private fun findString(el: JsonElement, key: String): String? = findPrimitive(el, key)
+        ?.takeIf { it.isString }
+        ?.content
+
+    /** Depth-first search for the first primitive (string or number) under [key]. */
+    private fun findPrimitive(el: JsonElement, key: String): JsonPrimitive? {
         when (el) {
             is JsonObject -> {
-                (el[key] as? JsonPrimitive)?.takeIf { it.isString }?.let { return it.content }
-                el.values.forEach { v -> findString(v, key)?.let { return it } }
+                (el[key] as? JsonPrimitive)?.let { return it }
+                el.values.forEach { v -> findPrimitive(v, key)?.let { return it } }
             }
-            is JsonArray -> el.forEach { v -> findString(v, key)?.let { return it } }
+            is JsonArray -> el.forEach { v -> findPrimitive(v, key)?.let { return it } }
             else -> {}
         }
         return null
     }
+}
+
+/**
+ * True when the auth endpoint itself rejected the refresh token, as opposed to a
+ * transport-level 403 (Cloudflare "1010", rate limit, …) that says nothing about
+ * the stored session. Clearing the session on those used to sign the viewer out
+ * for no reason.
+ */
+internal fun isTokenRejection(status: Int, body: String): Boolean {
+    if (status == 401) return true
+    if (status != 403) return false
+    val payload = body.lowercase()
+    if (payload.isBlank() || payload.trimStart().startsWith("<")) return false
+    return payload.contains("refresh") || payload.contains("token") ||
+        payload.contains("session") || payload.contains("auth")
+}
+
+/**
+ * Turns an `expiresIn` value — seconds as a number or numeric string, or a
+ * duration such as `"5m"` / `"1h"` / `"30s"` — into an absolute expiry time.
+ * Returns 0 when the server did not say, which disables the proactive refresh.
+ */
+internal fun expiresAtFrom(raw: String?, now: Long = System.currentTimeMillis()): Long {
+    val value = raw?.trim()?.lowercase().orEmpty()
+    if (value.isEmpty()) return 0L
+    val seconds = when {
+        value.all { it.isDigit() } -> value.toLong()
+        else -> {
+            val n = value.dropLast(1).toLongOrNull() ?: return 0L
+            when (value.last()) {
+                's' -> n
+                'm' -> n * 60
+                'h' -> n * 3_600
+                'd' -> n * 86_400
+                else -> return 0L
+            }
+        }
+    }
+    if (seconds <= 0L) return 0L
+    return now + seconds * 1_000L
 }

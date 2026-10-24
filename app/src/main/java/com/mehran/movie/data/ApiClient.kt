@@ -14,8 +14,17 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-/** Error carrying the HTTP status and the API's message, if any. */
-class ApiException(val status: Int, message: String) : IOException(message)
+/**
+ * Error carrying the HTTP status and the API's message, if any.
+ *
+ * [body] is the raw response payload: callers use it to tell an API-level
+ * rejection (JSON error object) from an edge/CDN block (HTML page).
+ */
+class ApiException(
+    val status: Int,
+    message: String,
+    val body: String = ""
+) : IOException(message)
 
 /**
  * Thin client over the showfilix.com JSON API (see showfilix-api-findings.md).
@@ -113,7 +122,7 @@ class ApiClient(private val session: SessionStore) {
                 val (code2, payload2) = run(build())
                 if (code2 in 200..299) return@withContext payload2
                 if (code2 == 401 || code2 == 403) notifySessionExpired()
-                throw ApiException(code2, extractMessage(payload2, code2))
+                throw ApiException(code2, extractMessage(payload2, code2), payload2)
             }
             // The refresh did not succeed. AuthRepository clears the stored
             // tokens when the server rejected the refresh token, so an empty
@@ -121,7 +130,7 @@ class ApiClient(private val session: SessionStore) {
             // is surfaced as a normal, retryable error instead.
             if (session.refreshToken.isNullOrBlank()) notifySessionExpired()
         }
-        throw ApiException(code, extractMessage(payload, code))
+        throw ApiException(code, extractMessage(payload, code), payload)
     }
 
     /** Tells the UI to fall back to the login screen instead of a paywall. */

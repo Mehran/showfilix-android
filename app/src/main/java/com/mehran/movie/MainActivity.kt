@@ -6,10 +6,15 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import com.mehran.movie.ui.MehranMovieRoot
 import com.mehran.movie.ui.theme.MehranMovieTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    /** The DI container; also used to renew the session on resume. */
+    private val container by lazy { (application as MehranMovieApp).container }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,11 +24,17 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        val container = (application as MehranMovieApp).container
         setContent {
             MehranMovieTheme {
                 MehranMovieRoot(container)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Access tokens last ~5 minutes: renew on every return to the app so the
+        // viewer stays signed in after the box has been idle.
+        lifecycleScope.launch { container.ensureSession() }
     }
 }

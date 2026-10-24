@@ -1,21 +1,17 @@
 package com.mehran.movie.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +36,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -53,17 +48,9 @@ import com.mehran.movie.data.MediaItem
 import com.mehran.movie.ui.components.PosterCard
 import com.mehran.movie.ui.theme.Bg0
 import com.mehran.movie.ui.theme.Brand
-import com.mehran.movie.ui.theme.Surface2
 import com.mehran.movie.ui.theme.Text1
 import com.mehran.movie.ui.theme.Text2
 import kotlinx.coroutines.delay
-
-private val KEY_ROWS = listOf(
-    "abcdefghij".toList(),
-    "klmnopqrst".toList(),
-    "uvwxyz0123".toList(),
-    "456789".toList()
-)
 
 @Composable
 fun SearchScreen(
@@ -74,18 +61,15 @@ fun SearchScreen(
     var results by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    // Explicit searches (IME "Search", remote Enter, the on-screen key) bump
-    // [submitTick] so the effect below re-runs even for an unchanged query and
-    // skips the typing debounce.
+    // Explicit searches (IME "Search", remote Enter) bump [submitTick] so the
+    // effect below re-runs even for an unchanged query and skips the typing
+    // debounce.
     var submitTick by remember { mutableIntStateOf(0) }
     var submittedQuery by remember { mutableStateOf<String?>(null) }
 
     val keyboard = LocalSoftwareKeyboardController.current
-    // The native keyboard's own height. When it is open the TV on-screen
-    // keypad is redundant and would squeeze the results away, so hide it.
-    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-    /** Runs the search now: IME action, hardware Enter or the on-screen key. */
+    /** Runs the search now: IME action or hardware Enter. */
     fun submitSearch() {
         val q = query.trim()
         keyboard?.hide()
@@ -116,8 +100,9 @@ fun SearchScreen(
             .onFailure { message = it.message }
     }
 
-    // imePadding keeps the field/results above the soft keyboard on devices
-    // that show one (NetBox with a USB/Bluetooth keyboard, touch TVs).
+    // No on-screen keypad: typing goes through the device's own Android
+    // keyboard, same as the login screen. imePadding keeps the field and the
+    // results visible while that keyboard is open.
     Column(Modifier.fillMaxSize().background(Bg0).imePadding()) {
         Text(
             text = "جستجو",
@@ -130,8 +115,8 @@ fun SearchScreen(
 
         // A real text field, so Android can offer its IME. ImeAction.Search
         // labels the IME's action key "Search" (magnifier) instead of the
-        // default Enter/Go/"Login" style action, and onSearch below is what
-        // actually executes the query.
+        // default Enter/Go style action, and onSearch below is what actually
+        // executes the query.
         Row(
             Modifier
                 .padding(horizontal = 48.dp)
@@ -159,6 +144,9 @@ fun SearchScreen(
                 ),
                 modifier = Modifier
                     .weight(1f)
+                    // D-pad / remote focus should raise the native keyboard,
+                    // exactly like the login fields do.
+                    .onFocusChanged { if (it.isFocused) keyboard?.show() }
                     .onPreviewKeyEvent { event ->
                         // A physical remote/keyboard Enter (or numpad Enter)
                         // must search too, not just the soft keyboard action.
@@ -182,24 +170,6 @@ fun SearchScreen(
         }
         Spacer(Modifier.height(14.dp))
 
-        if (!imeVisible) {
-            Column(Modifier.padding(horizontal = 48.dp)) {
-                KEY_ROWS.forEach { rowKeys ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowKeys.forEach { ch -> KeyButton(ch.toString()) { query += ch } }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KeyButton("فاصله") { query += " " }
-                    KeyButton("⌫") { if (query.isNotEmpty()) query = query.dropLast(1) }
-                    KeyButton("پاک کردن") { query = "" }
-                    KeyButton("جستجو") { submitSearch() }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
         message?.let {
             Text(it, color = Text2, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 48.dp))
         }
@@ -216,26 +186,5 @@ fun SearchScreen(
                 PosterCard(item = item, width = 150, height = 225, onClick = { onOpenDetails(item) })
             }
         }
-    }
-}
-
-@Composable
-private fun KeyButton(label: String, onKey: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier
-            .width(if (label.length > 1) 120.dp else 62.dp)
-            .height(52.dp)
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onKey)
-            .background(if (focused) Color.White else Surface2, RoundedCornerShape(8.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (focused) Color(0xFF0B0C10) else Text1,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium
-        )
     }
 }

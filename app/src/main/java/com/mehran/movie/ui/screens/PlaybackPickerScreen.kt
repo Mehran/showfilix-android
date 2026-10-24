@@ -75,7 +75,9 @@ fun PlaybackPickerScreen(
     var state by remember { mutableStateOf<UiState<LinksResponse>>(UiState.Loading) }
     var reloadKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(media.externalId, reloadKey) {
+    // isLoggedIn is a key so returning here after signing in re-fetches the
+    // links instead of leaving the viewer on the sign-in prompt.
+    LaunchedEffect(media.externalId, reloadKey, isLoggedIn) {
         state = UiState.Loading
         state = try {
             UiState.Ready(catalog.links(media.type ?: "movie", media.externalId ?: "", media.siteKey))
@@ -270,19 +272,16 @@ private fun Selectors(
         }
         Spacer(Modifier.height(14.dp))
 
-        if (plan.isEmpty) {
+        // No access — signed out, dead session or no plan. Always offer
+        // sign-in: when the server has dropped the session the screen looks
+        // exactly like a paywall, and only a fresh login can tell them apart.
+        if (!hasAccess) {
             Text(
-                text = when {
-                    !hasAccess && !isLoggedIn -> "برای پخش باید وارد حساب کاربری شوید."
-                    !hasAccess -> "برای پخش این عنوان به اشتراک فعال نیاز دارید."
-                    else -> "لینک پخشی برای این عنوان در دسترس نیست."
-                },
+                text = if (isLoggedIn) "برای پخش این عنوان به اشتراک فعال نیاز دارید."
+                else "برای پخش باید وارد حساب کاربری شوید.",
                 color = Text2, fontSize = 17.sp
             )
             Spacer(Modifier.height(14.dp))
-            // Always offer sign-in: when the server has dropped the session the
-            // screen looks exactly like a paywall, and only a fresh login can
-            // tell the two apart.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FocusButton(
                     text = if (isLoggedIn) "ورود مجدد" else "ورود",
@@ -290,6 +289,13 @@ private fun Selectors(
                     onClick = onLogin
                 )
                 FocusButton("تلاش دوباره", onClick = onReload)
+            }
+            Spacer(Modifier.height(18.dp))
+        }
+
+        if (plan.isEmpty) {
+            if (hasAccess) {
+                Text("لینک پخشی برای این عنوان در دسترس نیست.", color = Text2, fontSize = 17.sp)
             }
             return@Column
         }

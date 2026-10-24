@@ -34,6 +34,19 @@ class AppContainer(app: Application) {
     fun acknowledgeSessionExpired() {
         _sessionExpired.value = false
     }
+
+    /**
+     * Renews the stored session on app start and on resume. Without this the
+     * ~5 minute access token is always stale after an idle period, and the first
+     * protected request has to rediscover that with a 401 — which looked like a
+     * lost login. If the refresh token turns out to be dead, the UI is told so it
+     * can offer the login screen instead of a paywall.
+     */
+    suspend fun ensureSession() {
+        if (!session.isLoggedIn) return
+        auth.ensureFreshSession()
+        if (!session.isLoggedIn) _sessionExpired.value = true
+    }
 }
 
 class MehranMovieApp : Application() {

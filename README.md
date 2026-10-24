@@ -39,8 +39,10 @@ The app appears under Android TV apps as **Mehran Movie**.
   sweep before the app takes over.
 - **Home** — hero billboard plus content rows, from `/api/media/home`.
 - **Browse** — paginated poster grid for movies and series with sort filters.
-- **Search** — on-screen keyboard with live results, and a real text field whose
-  IME action key is **Search** (the remote/USB-keyboard Enter submits too).
+- **Search** — a real text field that raises the device's own **Android keyboard**
+  (same as the login screen), with live results as you type. The IME action key is
+  **Search**, and Enter on a remote/USB keyboard submits too. There is no custom
+  on-screen keypad eating the screen, so the results grid stays visible.
 - **Details** — full metadata, cast, and "similar titles".
 - **Playback picker** — pressing Play opens a picker with every available
   **version** (دوبله فارسی / نسخه اصلی), **season**, **episode** and **quality**
@@ -58,7 +60,10 @@ The app appears under Android TV apps as **Mehran Movie**.
   Android keyboard** (e-mail / password IME actions, with `Next` moving to the
   password and `Done` submitting). The screen pads and scrolls for the keyboard
   insets, so the **Login** button stays visible while typing instead of being
-  hidden behind the keyboard.
+  hidden behind the keyboard. Tokens are written synchronously to
+  `SharedPreferences` together with the access token's expiry, and the session is
+  renewed on every app start/resume — so a box that sat idle (or killed the app)
+  keeps the viewer signed in instead of falling back to a login screen.
 - **TV-first UI** — leanback launcher entry, D-pad navigation, focus rings.
 
 ## Screens & flow
@@ -68,7 +73,8 @@ Intro ──▶ Home ──▶ Details ──▶ Playback picker ──▶ Playe
            │        └── version ▸ season ▸ episode ▸ quality
            │  └──▶ Browse (movies / series) ──▶ Details
            └──▶ Search ──▶ Details
-Login (e-mail + password) is reachable from Home and Details.
+Login (e-mail + password) is reachable from Home, Details, and the playback picker
+(«ورود مجدد» whenever playback links come back without access).
 ```
 
 ## Reverse-engineered API
@@ -146,7 +152,7 @@ captured from the live API** (saved under `app/src/test/resources/`) with the ap
 `@Serializable` models, so the tests fail if the wire format drifts.
 
 ```
-./gradlew :app:testDebugUnitTest   # 11 tests, 0 failures
+./gradlew :app:testDebugUnitTest   # 15 tests, 0 failures
 ```
 
 ## Known limitations
@@ -161,7 +167,10 @@ captured from the live API** (saved under `app/src/test/resources/`) with the ap
   the in-app ExoPlayer decode, because no Android TV device/emulator was available.
 - Playback requires an account with access; otherwise the app shows a
   "subscription required" notice.
-- Access tokens last ~5 minutes; the client refreshes them automatically on a 401.
+- Access tokens last ~5 minutes; the client refreshes them on app start/resume and
+  on a 401, and keeps them across restarts. Only a genuine rejection of the refresh
+  token (not a CDN/rate-limit 403) ends the session, and the viewer is then offered
+  the login screen rather than a "subscription required" wall.
 - Season/episode/quality selection is implemented, but the last choice is not
   remembered between sessions. Watchlist and continue-watching are not implemented.
 - The player's on-screen controls are the stock ExoPlayer controller; a purpose-built
